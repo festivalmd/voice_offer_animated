@@ -12,26 +12,27 @@
        The RO values below are what a messenger robot (no Accept-Language header)
        receives. For real guests the Cloudflare middleware (functions/_middleware.js)
        rewrites og:title / og:description / <title> to the language picked from
-       ?lang= or Accept-Language: ro / ru / en. og:image points at the
-       bartender poster (a PNG, accepted by every messenger). -->
+       ?lang= or Accept-Language: ro / ru / en. og:image points at the lightweight
+       400x400 JPEG thumbnail (og-thumb.jpg) — WhatsApp crawlers truncate the page
+       after the first kilobytes, so all OG tags stay at the very top of <head>. -->
   <meta property="og:url" content="https://offer.voiceclub.top/" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="VOICE CLUB KARAOKE" />
   <meta property="og:title" content="VOICE CLUB KARAOKE — Spune-ne părerea ta!" />
   <meta property="og:description" content="Lasă o recenzie și primești un cadou din partea barmanului!" />
-  <meta property="og:image" content="https://offer.voiceclub.top/assets/media/bartender-poster_ico.png" />
-  <meta property="og:image:secure_url" content="https://offer.voiceclub.top/assets/media/bartender-poster_ico.png" />
-  <meta property="og:image:type" content="image/png" />
-  <meta property="og:image:width" content="1200" />
-  <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="VOICE CLUB KARAOKE — barmanul te așteaptă cu un cadou" />
+  <meta property="og:image" content="https://offer.voiceclub.top/assets/media/og-thumb.jpg" />
+  <meta property="og:image:secure_url" content="https://offer.voiceclub.top/assets/media/og-thumb.jpg" />
+  <meta property="og:image:type" content="image/jpeg" />
+  <meta property="og:image:width" content="400" />
+  <meta property="og:image:height" content="400" />
+  <meta property="og:image:alt" content="VOICE CLUB KARAOKE" />
   <meta property="og:locale" content="ro_RO" />
   <meta property="og:locale:alternate" content="ru_RU" />
   <meta property="og:locale:alternate" content="en_US" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="VOICE CLUB KARAOKE — Spune-ne părerea ta!" />
   <meta name="twitter:description" content="Lasă o recenzie și primești un cadou din partea barmanului!" />
-  <meta name="twitter:image" content="https://offer.voiceclub.top/assets/media/bartender-poster_ico.png" />
+  <meta name="twitter:image" content="https://offer.voiceclub.top/assets/media/og-thumb.jpg" />
 
   <title>VOICE CLUB KARAOKE — Spune-ne părerea ta!</title>
   <link rel="stylesheet" href="assets/css/styles.css?v=10" />
