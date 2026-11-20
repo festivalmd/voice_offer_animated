@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0b0b14" />
+  <title>Voice Club — Admin Panel</title>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body class="admin-body">
+  <div class="admin-shell">
+    <header class="admin-header">
+      <h1>🎛️ Voice Club — Admin</h1>
+      <div class="admin-actions">
+        <button id="btn-save" class="btn-save">💾 Salvează</button>
+        <button id="btn-reset" class="btn-danger">↺ Reset teste</button>
+      </div>
+    </header>
+
+    <div id="admin-auth" class="admin-auth">
+      <div class="glass-card">
+        <h2>Autentificare</h2>
+        <input id="auth-user" placeholder="User" autocomplete="username" />
+        <input id="auth-pass" type="password" placeholder="Parolă" autocomplete="current-password" />
+        <button id="btn-login" class="spinner-btn">Intră</button>
+      </div>
+    </div>
+
+    <div id="admin-app" hidden>
+      <div class="admin-cols">
+        <!-- Left: settings -->
+        <section class="admin-panel">
+          <h2>⚙️ Setări generale</h2>
+          <label>Link Google Reviews
+            <input id="cfg-google" type="url" placeholder="https://..." />
+          </label>
+          <label>Viața cuponului (minute)
+            <input id="cfg-lifetime" type="number" min="1" step="1" />
+          </label>
+          <label>Secunda apariției cardului în video
+            <input id="cfg-reveal" type="number" min="0" step="0.1" />
+          </label>
+          <label>Limită zilnică de spin per utilizator (0 = nelimitat)
+            <input id="cfg-daily-spin" type="number" min="0" step="1" />
+          </label>
+          <label class="check-label">
+            <input id="cfg-enforce-user-limit" type="checkbox" checked />
+            <span>⚙️ Control utilizatori (interzice repetarea primirii premiului timp de 24 de ore)</span>
+          </label>
+        </section>
+
+        <!-- Right: stats -->
+        <section class="admin-panel">
+          <h2>📊 Statistici</h2>
+          <div class="stats-grid">
+            <div class="stat"><span class="stat-num" id="stat-opens">0</span><span>Deschideri</span></div>
+            <div class="stat"><span class="stat-num" id="stat-spins">0</span><span>Spins</span></div>
+            <div class="stat"><span class="stat-num" id="stat-redeemed">0</span><span>Răscumpărate</span></div>
+          </div>
+          <h3>Răscumpărate pe premiu</h3>
+          <div id="stat-by-prize" class="stat-by-prize"></div>
+        </section>
+      </div>
+
+      <!-- Prizes list -->
+      <section class="admin-panel">
+        <h2>🎁 Premii</h2>
+        <div id="prizes-list" class="prizes-list"></div>
+        <button id="btn-add-prize" class="btn-ghost">+ Adaugă premiu</button>
+      </section>
+    </div>
+
+    <div id="admin-toast" class="toast admin-toast" hidden></div>
+  </div>
+  <script src="assets/js/admin.js"></script>
+</body>
+</html>

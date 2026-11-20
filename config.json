@@ -1,0 +1,68 @@
+{
+  "googleReviewsUrl": "https://www.google.com/search?q=Voice+Club&kved",
+  "couponLifetimeMinutes": 15,
+  "prizeRevealSeconds": 4.1,
+  "dailySpinLimitPerUser": 0,
+  "prizes": [
+    {
+      "id": "shot-mojito",
+      "active": true,
+      "icon": "🍹",
+      "weight": 40,
+      "dailyLimit": 20,
+      "name": {
+        "ro": "Shot de Mojito",
+        "ru": "Шот Мохито",
+        "en": "Mojito Shot"
+      }
+    },
+    {
+      "id": "cocktail-stage",
+      "active": true,
+      "icon": "🍸",
+      "weight": 25,
+      "dailyLimit": 12,
+      "name": {
+        "ro": "Cocktail din stage",
+        "ru": "Коктейль со сцены",
+        "en": "Stage Cocktail"
+      }
+    },
+    {
+      "id": "dance-lesson",
+      "active": true,
+      "icon": "💃",
+      "weight": 15,
+      "dailyLimit": 10,
+      "name": {
+        "ro": "Lecție de dans",
+        "ru": "Урок танцев",
+        "en": "Dance Lesson"
+      }
+    },
+    {
+      "id": "vip-booth",
+      "active": true,
+      "icon": "🛋️",
+      "weight": 12,
+      "dailyLimit": 5,
+      "name": {
+        "ro": "Ridicare la VIP",
+        "ru": "Подъём в VIP",
+        "en": "VIP Upgrade"
+      }
+    },
+    {
+      "id": "private-bartender",
+      "active": true,
+      "icon": "🥃",
+      "weight": 8,
+      "dailyLimit": 3,
+      "name": {
+        "ro": "Bartender personal",
+        "ru": "Личный бармен",
+        "en": "Private Bartender"
+      }
+    }
+  ]
+}

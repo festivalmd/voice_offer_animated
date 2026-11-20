@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0b14" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Voice Club — Complements</title>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body>
+  <video id="bartender-video" src="assets/media/bartender.mp4" poster="assets/media/bartender-poster.png" playsinline muted preload="auto"></video>
+
+  <!-- Language switcher -->
+  <div id="lang-switcher">
+    <button data-lang="ro" class="lang-btn active">RO</button>
+    <button data-lang="ru" class="lang-btn">RU</button>
+    <button data-lang="en" class="lang-btn">EN</button>
+  </div>
+
+  <!-- ===== Start screen ===== -->
+  <section id="screen-start" class="screen active">
+    <div class="glass-card">
+      <img class="logo" src="assets/media/bartender-poster.png" alt="Voice Club" hidden />
+      <h1 id="t-title">Комплимент от бармена Voice Club</h1>
+      <p id="t-subtitle">Встряхни шейкер и узнай свой подарок за отзыв в Google</p>
+      <button id="btn-spin" class="spinner-btn">
+        <span class="icon">🍸</span>
+        <span data-i18n="shake">Встряхнуть шейкер</span>
+      </button>
+      <div class="hint"><span id="t-hint"></span></div>
+    </div>
+  </section>
+
+  <!-- ===== Reveal / coupon screen (overlay while video plays) ===== -->
+  <section id="screen-reveal" class="screen">
+    <div class="prize-pop" id="prize-pop">
+      <div class="prize-confetti" id="confetti"></div>
+      <div class="prize-icon" id="prize-icon">🎁</div>
+      <div class="prize-label" id="t-prize-label">Prémio</div>
+      <div class="prize-name" id="prize-name"></div>
+    </div>
+
+    <!-- Coupon mode (after clicking Google) -->
+    <div class="coupon-wrap" id="coupon-wrap" hidden>
+      <div class="coupon-card" id="coupon-card">
+        <div class="coupon-head">
+          <span id="t-coupon-title">Cupon de băutură</span>
+          <span class="coupon-id" id="coupon-id"></span>
+        </div>
+        <div class="coupon-body">
+          <div class="coupon-icon" id="coupon-icon"></div>
+          <div class="coupon-name" id="coupon-name"></div>
+        </div>
+        <div class="coupon-timer">
+          <span id="t-timer-label">Valabil</span>
+          <span class="timer" id="coupon-timer">15:00</span>
+        </div>
+        <div class="marquee-frame" id="marquee-frame"></div>
+      </div>
+    </div>
+
+    <div class="action-bar" id="action-bar">
+      <button id="btn-google" class="cta-google">
+        <span data-i18n="claim">Забрать подарок (Оставить отзыв в Google)</span>
+      </button>
+      <button id="btn-redeem" class="cta-redeem" hidden>
+        <span data-i18n="redeem">Погасить у бармена</span>
+      </button>
+    </div>
+  </section>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script>
+    // Prevent the video from auto-requiring play on iOS; we control play start.
+    window.__APP_CONFIG__ = {};
+  </script>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>
