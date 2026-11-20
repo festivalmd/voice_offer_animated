@@ -731,6 +731,28 @@ button {
 }
 .prize-row .icon-input { width: 52px; text-align: center; }
 .prize-row .num-input { width: 64px; text-align: center; }
+/* Captioned numeric fields (weight = chance, dailyLimit = per-day limit).
+   The wrapper is one flex item inside the row grid, so the 11px caption sits
+   directly above its input without stretching or mis-aligning the row: the
+   extra height only comes from the caption itself. */
+.prize-row .prize-num-field {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+.prize-row .prize-num-label {
+  font-size: 11px;
+  line-height: 1;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+  text-align: center;
+  cursor: help;
+}
+.prize-row .prize-num-field .num-input { width: 64px; }
 .prize-row .toggle {
   width: 46px;
   height: 26px;

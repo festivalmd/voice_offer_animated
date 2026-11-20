@@ -140,6 +140,21 @@
   // ---------- render prizes ----------
   const PRIZE_COLS = ["icon", "ro", "ru", "en", "weight", "dailyLimit", "active"];
 
+  // Wrap a numeric prize input in `.prize-num-field` with a compact caption
+  // (`<span class="prize-num-label">`). The caption is a single grid cell item,
+  // so it can never shift the neighbouring columns of `.prize-row`.
+  function fieldWithLabel(input, text, hint) {
+    const wrap = document.createElement("div");
+    wrap.className = "prize-num-field";
+    const label = document.createElement("span");
+    label.className = "prize-num-label";
+    label.textContent = text;
+    if (hint) label.title = hint;
+    wrap.appendChild(label);
+    wrap.appendChild(input);
+    return wrap;
+  }
+
   function renderPrizes() {
     const list = $("prizes-list");
     list.innerHTML = "";
@@ -265,8 +280,19 @@
       attachColorPicker(colorWrap, colorSwatch, p.color || "#ffffff", (hex) => { p.color = hex; });
       row.appendChild(colorWrap);
 
-      row.appendChild(weightInp);
-      row.appendChild(limitInp);
+      // Two numeric fields only. The binding is easy to get backwards, so keep it
+      // explicit and verified against the server:
+      //   weight     -> pickPrize() in functions/_middleware.js (weighted random);
+      //                 /api/admin/config.js sanitizeConfig keeps it as toNumber.
+      //   dailyLimit -> pickPrize(): `limit <= 0 || used < limit` (0 = unlimited);
+      //                 persisted by config.js as an integer.
+      // Each input sits in a tiny wrapper with an 11px caption so the captions
+      // live inside the same grid cell: the row height stays even and the
+      // existing `.prize-row` column template is untouched.
+      row.appendChild(fieldWithLabel(weightInp, "Шанс (%)", "Вес / шанс в взвешенном рандоме"));
+      row.appendChild(
+        fieldWithLabel(limitInp, "Лимит / день", "0 = без лимита")
+      );
       row.appendChild(del);
       list.appendChild(row);
     });
