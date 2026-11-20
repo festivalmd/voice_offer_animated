@@ -594,15 +594,29 @@ button {
 /* ================================================
    ADMIN PANEL (pad.html) — desktop-ish styling
    ================================================ */
+/* The global `html, body { height: 100%; overflow: hidden }` rule above is meant
+   for the guest (full-screen video) page. The admin page must scroll, so the
+   root elements are restated here for the admin document only.
+
+   `html:has(body.admin-body)` is required on purpose: without it the root
+   <html> keeps `height: 100%` + `overflow: hidden`, and since admin shapes set
+   `overflow: visible`, the document box is still clamped to the viewport and
+   the overflowing panel gets clipped instead of scrolling. `!important` wins
+   over both the `html, body` rule above and the `.admin-shell { overflow:
+   visible }` override further down (the scrolling happens on html/body, never
+   on the panel containers, so popovers stay unclipped). */
+html:has(body.admin-body),
+body.admin-body {
+  height: auto !important;
+  min-height: 100vh;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
 .admin-body {
-  /* The global `html, body { overflow: hidden }` rule above is meant for the
-     guest (full-screen video) page. The admin page must scroll, so both axes
-     are restated here with the same specificity but a later rule. */
-  height: auto;
-  min-height: 100%;
-  overflow-x: auto;
-  overflow-y: auto;
-  overscroll-behavior: auto;
+  /* Viewport units (incl. dvh) must not lock the body to one screen height. */
+  min-height: 100vh;
   background:
     radial-gradient(circle at 20% -10%, rgba(233,69,96,0.15), transparent 40%),
     radial-gradient(circle at 90% 110%, rgba(212,175,55,0.12), transparent 40%),
@@ -612,8 +626,9 @@ button {
 .admin-shell {
   max-width: 1080px;
   margin: 0 auto;
-  padding: 20px;
-  min-height: 100dvh;
+  padding: 20px 20px 60px;
+  /* No viewport height here: the page grows with its content and scrolls. */
+  min-height: 0;
 }
 .admin-header {
   display: flex;
