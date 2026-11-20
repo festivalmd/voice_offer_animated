@@ -157,6 +157,9 @@
 
   function renderPrizes() {
     const list = $("prizes-list");
+    // The rendered rows are thrown away, so a marker left on the old DOM (or
+    // on a row that no longer exists) must be dropped before rebuilding.
+    clearPickerOpen();
     list.innerHTML = "";
     prizes.forEach((p, idx) => {
       const row = document.createElement("div");
@@ -331,6 +334,8 @@
     START_COLOR_FIELDS.forEach(([key, , fallback]) => {
       if (res && res[key] !== undefined) settings[key] = res[key] || fallback;
     });
+    // Canonical key stored in KV and read by /api/config -> app.js (the guest
+    // "Забрать подарок" CTA opens exactly this URL).
     $("cfg-google").value = settings.googleReviewsUrl || "";
     $("cfg-lifetime").value = settings.couponLifetimeMinutes;
     $("cfg-reveal").value = settings.prizeRevealSeconds;
@@ -446,6 +451,29 @@
     return div.innerHTML;
   }
 
+  // ---------- Google review link helpers ----------
+  // The admin often copies a link without the scheme ("g.page/r/.../review",
+  // "google.com/maps/...", "search.google.com/local/writereview?placeid=...").
+  // The guest app opens the stored value with window.open(), so a scheme-less
+  // value would be treated as a relative path: prefix https:// instead of
+  // rejecting the link. Empty stays empty (the field is optional).
+  function normalizeGoogleReviewUrl(raw) {
+    let url = String(raw == null ? "" : raw).trim();
+    if (!url) return "";
+    // Drop surrounding quotes/angle brackets that sneak in when pasting.
+    url = url.replace(/^[<"'\s]+/, "").replace(/[>"'\s]+$/, "");
+    if (/^\/\//.test(url)) url = "https:" + url;
+    else if (!/^[a-z][a-z0-9+.-]*:/i.test(url)) url = "https://" + url;
+    return url;
+  }
+
+  // Is the value a real, absolute http(s) URL?
+  function isValidGoogleReviewUrl(url) {
+    if (!/^https?:\/\/[^\s]+$/i.test(String(url || ""))) return false;
+    try { new URL(url); } catch (e) { return false; }
+    return true;
+  }
+
   // ---------- reusable compact color picker (swatch + popup palette) ----------
   const CLUB_COLORS = [
     "#ffffff", "#d4af37", "#e94560", "#ff4d6d",
@@ -473,14 +501,60 @@
   // is open. Anything that is not one of these syncs the `has-open-popover`
   // class; only the first match is lifted, so the row is raised inside its card
   // and the card is raised above the neighbouring cards.
+  //
+  // `.prizes-list > *` is included because every prize is one direct child of
+  // the list (`.prize-row`), and the list is a grid: the next prize would
+  // otherwise paint its inputs/buttons over the open palette.
   const POPOVER_HOSTS = [
     ".start-row",
     ".prize-row",
     ".cfg-prize-label-row",
     ".admin-panel",
-    ".admin-details"
+    ".admin-details",
+    "#prizes-list > *"
   ];
   const POPOVER_CLASS = "has-open-popover";
+
+  // Class that marks the one prize card whose palette is currently open. It is
+  // a *global* marker: only a single card in `#prizes-list` may carry it, so
+  // opening a second palette always drops it from the previous card first.
+  const PICKER_OPEN_CLASS = "is-picker-open";
+
+  // Closest root container of a prize inside the prize list: `.prize-card` /
+  // `.prize-item` if the markup ever grows them, otherwise the direct child of
+  // `#prizes-list`. Returns null when `node` is not inside the list.
+  function prizeCardOf(node) {
+    if (!node || !node.closest) return null;
+    const card = node.closest(".prize-card, .prize-item");
+    if (card) return card;
+    const list = document.getElementById("prizes-list");
+    if (!list || !list.contains(node)) return null;
+    let el = node;
+    while (el && el.parentElement && el.parentElement !== list) {
+      el = el.parentElement;
+    }
+    return el && el !== list ? el : null;
+  }
+
+  // Sync `.is-picker-open` on the prize list: the card owning the open palette
+  // is lifted (position: relative; z-index: 2000 !important in the CSS), every
+  // other card loses the class.
+  function markPrizeCard(node, isOpen) {
+    const list = document.getElementById("prizes-list");
+    if (!list || !node || !list.contains(node)) return;
+    const card = prizeCardOf(node);
+    const cards = list.querySelectorAll("." + PICKER_OPEN_CLASS);
+    for (let i = 0; i < cards.length; i++) {
+      if (!isOpen || cards[i] !== card) cards[i].classList.remove(PICKER_OPEN_CLASS);
+    }
+    if (isOpen && card) card.classList.add(PICKER_OPEN_CLASS);
+  }
+
+  // Drop the marker from every prize card (used when the list is re-rendered).
+  function clearPickerOpen() {
+    const open = document.querySelectorAll("#prizes-list ." + PICKER_OPEN_CLASS);
+    for (let i = 0; i < open.length; i++) open[i].classList.remove(PICKER_OPEN_CLASS);
+  }
 
   // Collect every ancestor (inclusive) of `node` that is a popover host.
   function popoverHosts(node) {
@@ -554,6 +628,7 @@
     const close = () => {
       if (detachViewport) { detachViewport(); detachViewport = null; }
       setPopoverOpen(wrap, false);
+      markPrizeCard(wrap, false);
       if (pop) { pop.remove(); pop = null; }
     };
     const open = () => {
@@ -587,7 +662,10 @@
       wrap.appendChild(pop);
       // Lift the enclosing row + card and keep the palette inside the viewport
       // (also after the user scrolls or resizes the window while it is open).
+      // `markPrizeCard` raises the whole prize card above the next prize so the
+      // palette is never covered by the neighbouring row's buttons.
       setPopoverOpen(wrap, true);
+      markPrizeCard(wrap, true);
       positionPopover(wrap, pop);
       const onViewport = () => { if (pop) positionPopover(wrap, pop); };
       window.addEventListener("resize", onViewport);
@@ -695,7 +773,12 @@
     return {
       // Keep any extra field the server already stores (future-proof).
       ...(base && typeof base === "object" ? base : {}),
-      googleReviewsUrl: google ? google.value.trim() : String(settings.googleReviewsUrl || ""),
+      // Always stored under the canonical key read by /api/config -> app.js.
+      // A value typed without the scheme is normalized to https://... instead
+      // of being rejected (or silently dropped) by the server sanitizer.
+      googleReviewsUrl: google
+        ? normalizeGoogleReviewUrl(google.value)
+        : normalizeGoogleReviewUrl(settings.googleReviewsUrl),
       couponLifetimeMinutes: Math.max(1, Math.floor(Number(lifetime && lifetime.value) || 15)),
       prizeRevealSeconds: Math.max(0, Number(reveal && reveal.value) || 4.1),
       // Idle ping-pong loop (seconds inside the video). An empty field below
@@ -757,22 +840,20 @@
     const btn = $("btn-save");
     const prevLabel = btn ? btn.textContent : "";
 
-    // The Google link field is type="url": an empty value is allowed (the field
-    // is optional) but a half-typed value would silently block a form submit.
+    // The Google link field is optional: an empty value is allowed (the guest
+    // CTA then warns and opens a Google search), but a malformed value would
+    // break the guest flow in window.open(). A copy-pasted link without the
+    // scheme is fixed up (https:// prefix) and written back into the field, so
+    // the admin sees exactly what will be saved.
     const google = $("cfg-google");
-    if (google && google.value.trim()) {
-      const url = google.value.trim();
-      // Cheap explicit scheme check first (and a hard requirement: the guest
-      // flow opens this link with window.open, a bare value would break it).
-      let valid = /^https?:\/\/[^\s]+$/i.test(url);
-      if (valid) {
-        try { new URL(url); } catch (e) { valid = false; }
-      }
-      if (!valid) {
+    if (google) {
+      const normalized = normalizeGoogleReviewUrl(google.value);
+      if (normalized && !isValidGoogleReviewUrl(normalized)) {
         flashField(google);
-        toast("Link invalid — folosește https://...", "error");
+        toast("Link invalid — folosește https://g.page/r/.../review", "error");
         return;
       }
+      if (normalized !== google.value.trim()) google.value = normalized;
     }
 
     saving = true;
@@ -791,7 +872,16 @@
         } else {
           serverConfig = payload;
         }
-        toast("Salvat ✓", "ok");
+        // Confirm what actually landed in config.googleReviewsUrl (the field the
+        // guest CTA opens), so a silently dropped link can never go unnoticed.
+        const savedGoogle = res.body && res.body.config && res.body.config.googleReviewsUrl;
+        const expectedGoogle = payload.googleReviewsUrl || "";
+        if (google && savedGoogle !== undefined && savedGoogle !== expectedGoogle) {
+          google.value = String(savedGoogle || "");
+          toast(savedGoogle ? "Link Google salvat: " + savedGoogle : "Salvat ✓ (link Google gol — se va deschide căutarea)", "ok");
+        } else {
+          toast(savedGoogle ? "Salvat ✓ — link Google: " + savedGoogle : "Salvat ✓", "ok");
+        }
         await loadStats();
       } else {
         toast(errorText(res), "error");
@@ -838,6 +928,13 @@
     on("btn-save", "click", doSave);
     on("btn-reset", "click", doReset);
     on("btn-add-prize", "click", addPrize);
+    // Enter inside the Google link field saves the config instead of reloading.
+    on("cfg-google", "keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        doSave();
+      }
+    });
 
     // Belt and braces: even if a button ever defaults to type="submit", the
     // native form submit must not reload the page — it saves instead.

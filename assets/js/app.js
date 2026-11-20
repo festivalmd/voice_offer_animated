@@ -20,6 +20,7 @@
       couponTitle: "Cupon de bar pentru",
       couponValid: "Valabil pentru",
       claim: "Primește cadoul (Lasă review în Google)",
+      googleLinkMissing: "⚠️ Linkul de review Google nu este setat în admin. Se deschide căutarea Google — roagă administratorul să adauge linkul direct.",
       redeem: "Răscumpără la barman",
       confirmRedeem: "Confirmă că barmanul a emis premiul?",
       redeemedToast: "✔ Barmanul a confirmat. Cuplone consumat. Reveniți mâine!",
@@ -40,6 +41,7 @@
       couponTitle: "Купон на выдачу",
       couponValid: "Действителен в течение",
       claim: "Забрать подарок (Оставить отзыв в Google)",
+      googleLinkMissing: "⚠️ Ссылка на отзыв Google не задана в админке. Открываем поиск Google — попросите администратора указать прямую ссылку на отзыв.",
       redeem: "Погасить у бармена",
       confirmRedeem: "Подтвердить, что бармен выдал приз?",
       redeemedToast: "✔ Бармен подтвердил. Купон погашен. До встречи завтра!",
@@ -60,6 +62,7 @@
       couponTitle: "Bar coupon for",
       couponValid: "Valid for",
       claim: "Claim your gift (Leave a Google review)",
+      googleLinkMissing: "⚠️ The Google review link is not set in the admin panel. Opening a Google search instead — ask the admin to add the direct link.",
       redeem: "Redeem at the bartender",
       confirmRedeem: "Confirm that the bartender issued the prize?",
       redeemedToast: "✔ Bartender confirmed. Coupon used. See you tomorrow!",
@@ -783,16 +786,64 @@
   }
 
   // ==================================================================
+  //  GOOGLE REVIEW LINK
+  // ==================================================================
+  // The link saved in the admin panel (config.googleReviewsUrl, editable in
+  // pad.html) is the ONLY link the claim CTA opens. It is returned by
+  // /api/config, i.e. exactly the stored value. If the admin left the field
+  // empty (or it is malformed) the guest gets a warning toast and a plain
+  // Google search is opened instead of nothing happening.
+  const GOOGLE_SEARCH_FALLBACK = "https://www.google.com/search?q=Voice+Club";
+
+  // Same normalization the admin panel applies on save: a scheme-less value
+  // ("g.page/r/.../review") must not be treated as a relative page path.
+  function normalizeUrl(raw) {
+    let url = String(raw == null ? "" : raw).trim();
+    if (!url) return "";
+    if (/^\/\//.test(url)) url = "https:" + url;
+    else if (!/^[a-z][a-z0-9+.-]*:/i.test(url)) url = "https://" + url;
+    return url;
+  }
+
+  function isHttpUrl(url) {
+    return /^https?:\/\/[^\s]+$/i.test(String(url || ""));
+  }
+
+  // Open the admin-configured review link. Returns true when the saved link was
+  // used, false when the Google search fallback had to be opened.
+  function openReviewLink() {
+    const saved = normalizeUrl(config.googleReviewsUrl);
+    const hasSaved = isHttpUrl(saved);
+
+    if (!hasSaved) {
+      // Explicit warning for the guest and a visible Google search instead of
+      // a silently dead button.
+      showToast(t("googleLinkMissing"), 5200);
+      if (!config.googleReviewsUrl) console.warn("[voice-club] config.googleReviewsUrl is empty — set it in /pad.html");
+    }
+
+    const target = hasSaved ? saved : GOOGLE_SEARCH_FALLBACK;
+    try {
+      const win = window.open(target, "_blank", "noopener,noreferrer");
+      // Some in-app browsers return null and block the popup: fall back to a
+      // same-tab navigation so the review window always opens.
+      if (!win) window.location.href = target;
+    } catch (e) {
+      try { window.location.href = target; } catch (e2) {}
+    }
+    return hasSaved;
+  }
+
+  // ==================================================================
   //  FLOW: claim -> coupon
   // ==================================================================
   async function claimPrize() {
     if (!currentPrize || !currentPrize.couponId) return;
     // Ignore taps that somehow reach the still hidden/animating CTA.
     if (btnGoogle.hidden || btnGoogle.disabled) return;
-    if (config.googleReviewsUrl) {
-      try { window.open(config.googleReviewsUrl, "_blank", "noopener"); }
-      catch (e) { window.location.href = config.googleReviewsUrl; }
-    }
+    // Must run synchronously inside the click (a setTimeout would be blocked
+    // by popup blockers, e.g. in the iOS in-app browser).
+    openReviewLink();
     enterCouponMode(currentPrize);
   }
 

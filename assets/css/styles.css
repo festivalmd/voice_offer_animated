@@ -446,10 +446,27 @@ button {
   font-weight: 800;
   letter-spacing: 0.3px;
 }
+/* Claim gift button: NO gold fill — the prize card already glows gold, so a
+   gold CTA visually merged with it. Instead the club gradient (pink -> red ->
+   purple) slowly shifts forever, with a neon glow and a light shimmer sweep. */
 .cta-google {
-  background: linear-gradient(135deg, var(--gold), #b88d1e);
-  color: #1a1503;
-  box-shadow: 0 10px 28px rgba(212,175,55,0.4);
+  background: linear-gradient(135deg, #ff0055, #e94560, #9d00ff, #ff0055);
+  background-size: 300% 300%;
+  color: #ffffff;
+  /* +20% over the shared 15px CTA size, extra bold, crisp soft text shadow. */
+  font-size: 18px;
+  font-weight: 800;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+  box-shadow:
+    0 8px 28px rgba(233, 69, 96, 0.65),
+    0 0 0 1px rgba(255, 255, 255, 0.25) inset;
+  animation: gradientShift 3.5s ease infinite;
+}
+/* The gradient sweep must keep running even when app.js injects inline
+   styles on the button — the animation owns the background position. */
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
 }
 .cta-redeem {
   background: linear-gradient(135deg, #3d9a5f, #2c7a48);
@@ -489,12 +506,16 @@ button {
   pointer-events: auto;
 }
 
-/* Attractive "tap me" pulse: rhythmic scale + golden neon glow + shimmer sweep. */
+/* Attractive "tap me" pulse: rhythmic scale + neon club glow + shimmer sweep.
+   The pulse only animates scale/glow — the own gradientShift animation keeps
+   the background moving (two animations, independent properties). */
 .cta-claim-wrap.is-visible .cta-google {
   position: relative;
   overflow: hidden;
   isolation: isolate;
-  animation: claimPulse 1.9s ease-in-out infinite;
+  animation:
+    claimPulse 1.9s ease-in-out infinite,
+    gradientShift 3.5s ease infinite;
 }
 /* Shimmer: a soft light band that runs across the button every cycle. */
 .cta-claim-wrap.is-visible .cta-google::after {
@@ -525,16 +546,16 @@ button {
   0%, 100% {
     transform: scale(1);
     box-shadow:
-      0 10px 26px rgba(212, 175, 55, 0.45),
-      0 0 0 0 rgba(255, 214, 102, 0.55),
-      0 0 18px rgba(255, 214, 102, 0.35);
+      0 8px 28px rgba(233, 69, 96, 0.65),
+      0 0 0 1px rgba(255, 255, 255, 0.25) inset,
+      0 0 22px rgba(255, 0, 85, 0.45);
   }
   50% {
-    transform: scale(1.05);
+    transform: scale(1.045);
     box-shadow:
-      0 14px 38px rgba(212, 175, 55, 0.7),
-      0 0 0 10px rgba(255, 214, 102, 0),
-      0 0 34px rgba(255, 214, 102, 0.85);
+      0 12px 38px rgba(233, 69, 96, 0.85),
+      0 0 0 1px rgba(255, 255, 255, 0.35) inset,
+      0 0 34px rgba(157, 0, 255, 0.65);
   }
 }
 @keyframes claimShimmer {
@@ -543,6 +564,7 @@ button {
   100% { transform: translateX(320%) skewX(-18deg); }
 }
 @media (prefers-reduced-motion: reduce) {
+  .cta-google { animation: none; }
   .cta-claim-wrap.is-visible .cta-google { animation: none; }
   .cta-claim-wrap.is-visible .cta-google::after { animation: none; opacity: 0; }
 }
@@ -680,6 +702,20 @@ button {
   font-size: 14px;
 }
 .admin-panel input:focus { outline: 2px solid var(--gold); }
+
+/* Google review link field: long club URLs must be fully readable/editable. */
+.admin-panel .cfg-google-label { margin-bottom: 14px; }
+.admin-panel .cfg-google-label input#cfg-google {
+  font-size: 13px;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Courier New", monospace;
+  letter-spacing: 0;
+}
+.admin-panel .cfg-google-hint {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--muted);
+  opacity: 0.85;
+}
 
 .stats-grid {
   display: grid;
@@ -1020,12 +1056,30 @@ button {
   position: relative;
   z-index: 1000;
 }
-/* Popover must also beat the lifted row it lives in. */
+
+/* ---------- Prize list: palettes must never be covered by the next prize ----
+   Every prize card is a normal stacking level (position: relative; z-index: 1)
+   so the list paints them in order. The card whose palette is open gets
+   `.is-picker-open` from `admin.js` and jumps to the top of the whole admin
+   stacking order (z-index: 2000 !important), which beats the following card's
+   inputs, buttons and the delete button regardless of DOM order. */
+#prizes-list > * {
+  position: relative;
+  z-index: 1;
+}
+#prizes-list > .is-picker-open,
+.prize-card.is-picker-open,
+.prize-item.is-picker-open {
+  position: relative;
+  z-index: 2000 !important;
+}
+/* Popover must also beat the lifted row it lives in; the floating palette
+   itself always wins over every lifted card. */
 .color-picker-wrap {
   z-index: 1000;
 }
 .color-picker-pop {
-  z-index: 9999;
+  z-index: 9999 !important;
 }
 
 /* ---------- Admin: collapsible "start screen" card (texts + colors) ---------- */

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0b0b14" />
   <title>Voice Club — Admin Panel</title>
-  <link rel="stylesheet" href="assets/css/styles.css?v=8" />
+  <link rel="stylesheet" href="assets/css/styles.css?v=9" />
 </head>
 <body class="admin-body">
   <div class="admin-shell">
@@ -34,8 +34,21 @@
           <!-- Left: settings -->
           <section class="admin-panel">
             <h2>⚙️ Setări generale</h2>
-            <label>Link Google Reviews
-              <input id="cfg-google" type="url" placeholder="https://..." />
+            <label for="cfg-google" class="cfg-google-label">Прямая ссылка на окно отзыва Google (g.page/r/.../review или writereview?placeid=...)
+              <input
+                id="cfg-google"
+                type="url"
+                inputmode="url"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="https://g.page/r/XXXXXXXXXXXXXXXX/review"
+              />
+              <span class="cfg-google-hint">
+                Ссылка из Google Business Profile → «Получить больше отзывов» (например
+                https://search.google.com/local/writereview?placeid=ChIJ...).
+                Открывается у гостя на кнопке «Забрать подарок». Если пусто — покажется
+                предупреждение и поиск Google.
+              </span>
             </label>
             <label>Viața cuponului (minute)
               <input id="cfg-lifetime" type="number" min="1" step="1" />
@@ -142,6 +155,6 @@
 
     <div id="admin-toast" class="toast admin-toast" role="status" aria-live="polite" hidden></div>
   </div>
-  <script src="assets/js/admin.js?v=8"></script>
+  <script src="assets/js/admin.js?v=9"></script>
 </body>
 </html>
