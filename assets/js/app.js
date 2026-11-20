@@ -125,12 +125,61 @@
     startButtonTextColor: "#ffffff",
     startButtonBgColor: "#e94560"
   };
-  let lang = localStorage.getItem(LANG_KEY) || "ro";
+  let lang = resolveInitialLang();
   let currentPrize = null;
   let couponDeadline = 0;
   let timerInterval = null;
   let spinInFlight = false;
   let videoStarted = false;
+  // ---------- i18n helpers ----------
+  // Guest language on the very first visit (nothing saved in localStorage yet):
+  //  1) `?lang=ru|en|ro` — an explicit link (e.g. a QR code per language) wins;
+  //  2) `navigator.language` / `navigator.languages` — the phone/browser language.
+  // Russian-speaking regions (uk, be, kk, ky, ...) are treated as `ru`, Romanian
+  // (ro, and Moldovan md) as `ro`, every other known language as `en`; an unknown
+  // language falls back to the default `ro`, matching the server-side default in
+  // functions/_middleware.js.
+  function detectBrowserLang() {
+    const params = window.location.search.replace(/^\?/, "").split("&");
+    for (let i = 0; i < params.length; i++) {
+      const pair = params[i].split("=");
+      if (decodeURIComponent(pair[0] || "") !== "lang") continue;
+      const value = decodeURIComponent((pair[1] || "").replace(/\+/g, " ")).toLowerCase();
+      if (I18N[value]) return value;
+    }
+    const list = (navigator.languages && navigator.languages.length)
+      ? navigator.languages
+      : [navigator.language || ""];
+    for (let i = 0; i < list.length; i++) {
+      const base = String(list[i] || "").toLowerCase().split(/[-_]/)[0];
+      if (!base) continue;
+      if (I18N[base]) return base;
+      if (/^(uk|be|kk|ky|tg|hy|az|ka|uz)$/.test(base)) return "ru";
+      if (/^(md|mo)$/.test(base)) return "ro";
+      if (/^[a-z]{2,3}$/.test(base)) return "en";
+    }
+    return "ro";
+  }
+
+  // Resolve the language once per page load. Priority:
+  //  1) the language the guest picked manually (localStorage);
+  //  2) the language the Cloudflare middleware already rendered into the page
+  //     (<html lang>, derived from ?lang= / Accept-Language) — this keeps the
+  //     interface and the link texts in one language;
+  //  3) a fresh guest with nothing stored -> browser/phone language.
+  // Nothing is written to localStorage here: an automatic pick must not be
+  // mistaken for a manual one, so the next visit is still free to follow the
+  // device language.
+  function resolveInitialLang() {
+    let saved = "";
+    try { saved = localStorage.getItem(LANG_KEY) || ""; } catch (e) { saved = ""; }
+    if (I18N[saved]) return saved;
+    const fromServer = String(document.documentElement.getAttribute("lang") || "").toLowerCase();
+    if (I18N[fromServer]) return fromServer;
+    return detectBrowserLang();
+  }
+
+
 // ---------- i18n helpers ----------
   function t(key) {
     return (I18N[lang] && I18N[lang][key]) || key;

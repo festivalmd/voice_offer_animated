@@ -88,6 +88,110 @@ const DEFAULT_CONFIG = {
   ]
 };
 
+// Languages the guest page (index.html) is localized into. `ro` is the default
+// for messengers and for every unknown/unsupported Accept-Language value.
+export const SUPPORTED_LANGS = ["ro", "ru", "en"];
+export const DEFAULT_LANG = "ro";
+
+// Link-preview texts (Open Graph / Twitter) and page title per language. The RO
+// entry is mirrored by the static defaults in index.html, so a messenger robot
+// that sends no Accept-Language header still gets exactly these values.
+export const OG_LOCALES = { ro: "ro_RO", ru: "ru_RU", en: "en_US" };
+export const OG_TEXT = {
+  ro: {
+    title: "VOICE CLUB KARAOKE — Spune-ne părerea ta!",
+    description: "Lasă o recenzie și primești un cadou din partea barmanului!"
+  },
+  ru: {
+    title: "VOICE CLUB KARAOKE — РАССКАЖИ О СВОИХ ВПЕЧАТЛЕНИЯХ",
+    description: "Оставь отзыв и забери подарок от бармена!"
+  },
+  en: {
+    title: "VOICE CLUB KARAOKE — REVIEW US",
+    description: "Share your experience and get a gift from our bartender!"
+  }
+};
+
+// Only the guest page is rewritten: `/` (Pages resolves it to index.html) and an
+// explicit `/index.html`.
+const GUEST_PAGE_PATHS = ["/", "/index.html"];
+
+// First supported `?lang=` value wins; otherwise the first supported language in
+// Accept-Language (ordered by q, ignoring q=0); otherwise Romanian.
+// Example Accept-Language: "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7".
+export function detectLang(url, acceptLanguage) {
+  let fromQuery = "";
+  try {
+    fromQuery = (new URL(url).searchParams.get("lang") || "").toLowerCase();
+  } catch (e) {
+    fromQuery = "";
+  }
+  if (SUPPORTED_LANGS.includes(fromQuery)) return fromQuery;
+
+  const header = String(acceptLanguage || "");
+  const ranked = header
+    .split(",")
+    .map((part, index) => {
+      const bits = part.trim().split(";");
+      const tag = (bits[0] || "").trim().toLowerCase();
+      let q = 1;
+      for (let i = 1; i < bits.length; i++) {
+        const m = /^\s*q\s*=\s*([0-9.]+)\s*$/i.exec(bits[i]);
+        if (m) q = Number(m[1]);
+      }
+      // `ru-RU` / `ru_RU` -> `ru`.
+      return { base: tag.split(/[-_]/)[0], q: isFinite(q) ? q : 0, index };
+    })
+    .filter((entry) => entry.base && entry.q > 0)
+    .sort((a, b) => (b.q - a.q) || (a.index - b.index));
+
+  for (const entry of ranked) {
+    if (SUPPORTED_LANGS.includes(entry.base)) return entry.base;
+  }
+  return DEFAULT_LANG;
+}
+
+// Rewrite og:title / og:description / twitter:title / twitter:description /
+// og:locale and <title> of the guest page for the detected language. Every
+// meta is rewritten (both property= and name= forms are matched) so a stray
+// duplicate can never leak the RO text into a RU/EN preview.
+export function localizeGuestHtml(response, lang) {
+  const text = OG_TEXT[lang] || OG_TEXT[DEFAULT_LANG];
+  const locale = OG_LOCALES[lang] || OG_LOCALES[DEFAULT_LANG];
+  const rewriteMeta = (attr, key, value) => (element) => {
+    if (element.getAttribute(attr) === key) {
+      element.setAttribute("content", value);
+    }
+  };
+  return new HTMLRewriter()
+    .on(
+      'meta[property="og:title"], meta[name="og:title"]',
+      { element: rewriteMeta("property", "og:title", text.title) }
+    )
+    .on(
+      'meta[property="og:description"], meta[name="og:description"]',
+      { element: rewriteMeta("property", "og:description", text.description) }
+    )
+    .on(
+      'meta[property="twitter:title"], meta[name="twitter:title"]',
+      { element: rewriteMeta("property", "twitter:title", text.title) }
+    )
+    .on(
+      'meta[property="twitter:description"], meta[name="twitter:description"]',
+      { element: rewriteMeta("property", "twitter:description", text.description) }
+    )
+    .on(
+      'meta[property="og:locale"], meta[name="og:locale"]',
+      { element: rewriteMeta("property", "og:locale", locale) }
+    )
+    .on("title", {
+      element(element) {
+        element.setInnerContent(text.title);
+      }
+    })
+    .transform(response);
+}
+
 export const onRequest = async (context) => {
   // Expose helpers used by every route. Wrapped so a missing KV or a malformed
   // stored config can never turn a guest request into a 500.
@@ -114,9 +218,29 @@ export const onRequest = async (context) => {
     return normalizeConfig(DEFAULT_CONFIG);
   };
 
+  // The guest page is rewritten so the same link previews correctly in the
+  // language of whoever opens it (?lang=ru / Accept-Language: ru-RU, ...).
+  // Everything else (admin panel, /api/*, static assets) passes through as-is.
+  const request = context.request;
+  const path = (() => {
+    try { return new URL(request.url).pathname.toLowerCase(); } catch (e) { return ""; }
+  })();
+  const isGuestPage = GUEST_PAGE_PATHS.includes(path);
+
   // Generic middleware: do NOT abort based on method. PUT/POST/GET all reach
   // the targeted function below. Auth is enforced per-route via requireAdmin().
-  return await context.next();
+  const response = await context.next();
+
+  if (isGuestPage) {
+    const contentType = response.headers.get("Content-Type") || "";
+    // Only real HTML documents are rewritten: a non-HTML or non-200 answer must
+    // stay untouched, and an already consumed/streamed body can not be reused.
+    if (response.status === 200 && /text\/html/i.test(contentType)) {
+      const lang = detectLang(request.url, request.headers.get("Accept-Language"));
+      return localizeGuestHtml(response, lang);
+    }
+  }
+  return response;
 };
 
 // Read a KV key without throwing. Returns null when the binding is missing.
