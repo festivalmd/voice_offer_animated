@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0b0b14" />
   <title>Voice Club — Admin Panel</title>
-  <link rel="stylesheet" href="assets/css/styles.css" />
+  <link rel="stylesheet" href="assets/css/styles.css?v=7" />
 </head>
 <body class="admin-body">
   <div class="admin-shell">
     <header class="admin-header">
       <h1>🎛️ Voice Club — Admin</h1>
       <div class="admin-actions">
-        <button id="btn-save" class="btn-save">💾 Salvează</button>
-        <button id="btn-reset" class="btn-danger">↺ Reset teste</button>
+        <button type="button" id="btn-save" class="btn-save">💾 Salvează</button>
+        <button type="button" id="btn-reset" class="btn-danger">↺ Reset teste</button>
       </div>
     </header>
 
@@ -22,56 +22,126 @@
         <h2>Autentificare</h2>
         <input id="auth-user" placeholder="User" autocomplete="username" />
         <input id="auth-pass" type="password" placeholder="Parolă" autocomplete="current-password" />
-        <button id="btn-login" class="spinner-btn">Intră</button>
+        <button type="button" id="btn-login" class="spinner-btn">Intră</button>
       </div>
     </div>
 
     <div id="admin-app" hidden>
-      <div class="admin-cols">
-        <!-- Left: settings -->
-        <section class="admin-panel">
-          <h2>⚙️ Setări generale</h2>
-          <label>Link Google Reviews
-            <input id="cfg-google" type="url" placeholder="https://..." />
-          </label>
-          <label>Viața cuponului (minute)
-            <input id="cfg-lifetime" type="number" min="1" step="1" />
-          </label>
-          <label>Secunda apariției cardului în video
-            <input id="cfg-reveal" type="number" min="0" step="0.1" />
-          </label>
-          <label>Limită zilnică de spin per utilizator (0 = nelimitat)
-            <input id="cfg-daily-spin" type="number" min="0" step="1" />
-          </label>
-          <label class="check-label">
-            <input id="cfg-enforce-user-limit" type="checkbox" checked />
-            <span>⚙️ Control utilizatori (interzice repetarea primirii premiului timp de 24 de ore)</span>
-          </label>
-        </section>
+      <!-- Everything editable lives in one form; no `required` attributes and
+           novalidate, so the browser can never silently cancel a save. -->
+      <form id="admin-form" novalidate autocomplete="off">
+        <div class="admin-cols">
+          <!-- Left: settings -->
+          <section class="admin-panel">
+            <h2>⚙️ Setări generale</h2>
+            <label>Link Google Reviews
+              <input id="cfg-google" type="url" placeholder="https://..." />
+            </label>
+            <label>Viața cuponului (minute)
+              <input id="cfg-lifetime" type="number" min="1" step="1" />
+            </label>
+            <label>Secunda apariției cardului în video
+              <input id="cfg-reveal" type="number" min="0" step="0.1" />
+            </label>
+            <label>Începutul ciclului de așteptare (sec)
+              <input id="cfg-idle-start" type="number" min="0" step="0.1" />
+            </label>
+            <label>Sfârșitul ciclului de așteptare (sec)
+              <input id="cfg-idle-end" type="number" min="0" step="0.1" />
+            </label>
+            <label>Limită zilnică de spin per utilizator (0 = nelimitat)
+              <input id="cfg-daily-spin" type="number" min="0" step="1" />
+            </label>
+            <label class="check-label">
+              <input id="cfg-enforce-user-limit" type="checkbox" checked />
+              <span>⚙️ Control utilizatori (interzice repetarea primirii premiului timp de 24 de ore)</span>
+            </label>
+            <div class="cfg-prize-label-row">
+              <span class="cfg-prize-label-title">Blițul/sigla premiului (RO / RU / EN)</span>
+              <div class="prize-label-name-fields">
+                <input id="cfg-prize-label-ro" placeholder="RO" />
+                <input id="cfg-prize-label-ru" placeholder="RU" />
+                <input id="cfg-prize-label-en" placeholder="EN" />
+              </div>
+              <div class="color-picker-wrap">
+                <button type="button" id="cfg-prize-label-swatch" class="color-swatch" style="background:#d4af37" title="Culoare text"></button>
+              </div>
+            </div>
+          </section>
 
-        <!-- Right: stats -->
-        <section class="admin-panel">
-          <h2>📊 Statistici</h2>
-          <div class="stats-grid">
-            <div class="stat"><span class="stat-num" id="stat-opens">0</span><span>Deschideri</span></div>
-            <div class="stat"><span class="stat-num" id="stat-spins">0</span><span>Spins</span></div>
-            <div class="stat"><span class="stat-num" id="stat-redeemed">0</span><span>Răscumpărate</span></div>
+          <!-- Right: stats -->
+          <section class="admin-panel">
+            <h2>📊 Statistici</h2>
+            <div class="stats-grid">
+              <div class="stat"><span class="stat-num" id="stat-opens">0</span><span>Deschideri</span></div>
+              <div class="stat"><span class="stat-num" id="stat-spins">0</span><span>Spins</span></div>
+              <div class="stat"><span class="stat-num" id="stat-redeemed">0</span><span>Răscumpărate</span></div>
+            </div>
+            <h3>Răscumpărate pe premiu</h3>
+            <div id="stat-by-prize" class="stat-by-prize"></div>
+          </section>
+        </div>
+
+        <!-- Start screen: texts (RO/RU/EN) + colors, compact collapsible card -->
+        <details class="admin-details" id="start-screen-details">
+          <summary>🎬 Стартовый экран (тексты и цвета)</summary>
+          <div class="admin-details-body">
+            <div class="start-row">
+              <span class="start-row-title">Заголовок</span>
+              <div class="start-row-fields">
+                <input id="cfg-start-title-ro" placeholder="RO" />
+                <input id="cfg-start-title-ru" placeholder="RU" />
+                <input id="cfg-start-title-en" placeholder="EN" />
+              </div>
+              <div class="color-picker-wrap">
+                <button type="button" id="cfg-start-title-color-swatch" class="color-swatch" style="background:#ffffff" title="Цвет заголовка"></button>
+              </div>
+            </div>
+            <div class="start-row">
+              <span class="start-row-title">Подзаголовок</span>
+              <div class="start-row-fields">
+                <input id="cfg-start-subtitle-ro" placeholder="RO" />
+                <input id="cfg-start-subtitle-ru" placeholder="RU" />
+                <input id="cfg-start-subtitle-en" placeholder="EN" />
+              </div>
+              <div class="color-picker-wrap">
+                <button type="button" id="cfg-start-subtitle-color-swatch" class="color-swatch" style="background:#cbd5e1" title="Цвет подзаголовка"></button>
+              </div>
+            </div>
+            <div class="start-row">
+              <span class="start-row-title">Кнопка запуска</span>
+              <div class="start-row-fields">
+                <input id="cfg-start-button-ro" placeholder="RO" />
+                <input id="cfg-start-button-ru" placeholder="RU" />
+                <input id="cfg-start-button-en" placeholder="EN" />
+              </div>
+              <div class="color-picker-wrap">
+                <button type="button" id="cfg-start-button-color-swatch" class="color-swatch" style="background:#ffffff" title="Цвет текста кнопки"></button>
+              </div>
+            </div>
+            <div class="start-row">
+              <span class="start-row-title">Фон кнопки</span>
+              <div class="start-row-fields">
+                <span class="start-row-hint">акцент + авто-градиент и свечение</span>
+              </div>
+              <div class="color-picker-wrap">
+                <button type="button" id="cfg-start-button-bg-swatch" class="color-swatch" style="background:#e94560" title="Цвет фона кнопки"></button>
+              </div>
+            </div>
           </div>
-          <h3>Răscumpărate pe premiu</h3>
-          <div id="stat-by-prize" class="stat-by-prize"></div>
-        </section>
-      </div>
+        </details>
 
-      <!-- Prizes list -->
-      <section class="admin-panel">
-        <h2>🎁 Premii</h2>
-        <div id="prizes-list" class="prizes-list"></div>
-        <button id="btn-add-prize" class="btn-ghost">+ Adaugă premiu</button>
-      </section>
+        <!-- Prizes list -->
+        <section class="admin-panel">
+          <h2>🎁 Premii</h2>
+          <div id="prizes-list" class="prizes-list"></div>
+          <button type="button" id="btn-add-prize" class="btn-ghost">+ Adaugă premiu</button>
+        </section>
+      </form>
     </div>
 
-    <div id="admin-toast" class="toast admin-toast" hidden></div>
+    <div id="admin-toast" class="toast admin-toast" role="status" aria-live="polite" hidden></div>
   </div>
-  <script src="assets/js/admin.js"></script>
+  <script src="assets/js/admin.js?v=7"></script>
 </body>
 </html>

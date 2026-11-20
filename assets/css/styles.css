@@ -39,6 +39,40 @@ button {
 }
 
 /* ============ VIDEO BACKGROUND ============ */
+/* Two stacked players live inside this fixed stage. Both are always mounted
+   (both poster images are identical), the idle crossfade only flips their
+   opacity, so no frame is ever empty. */
+#bartender-video-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background: #000;
+  pointer-events: none;
+}
+#bartender-video-stage .bartender-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  transform: scale(1.06);
+  background: #000;
+  /* Idle crossfade: the incoming player fades in over the outgoing one. */
+  opacity: 0;
+  transition: opacity 0.35s linear;
+  will-change: opacity;
+}
+#bartender-video-stage .bartender-video.is-active {
+  opacity: 1;
+}
+/* Stacking order while both players are visible during the crossfade. */
+#bartender-video-a.is-front { z-index: 2; }
+#bartender-video-b.is-front { z-index: 1; }
+
+/* Legacy single-player id: kept identical in case an old cached page loads
+   styles first, so the layout never breaks. */
 #bartender-video {
   position: fixed;
   inset: 0;
@@ -136,6 +170,11 @@ button {
 }
 
 /* ============ SPINNER BUTTON ============ */
+/* Idle invitation for the start CTA: every 2.8 s the whole button makes a short
+   energetic shake (as if the shaker is being rattled), a glossy light band
+   sweeps across it and a soft neon-gold glow pulses around the bottom edge.
+   Layering: the button itself = shake + gold glow, ::before = diagonal shimmer,
+   .icon = its own little rattle (the emoji only is transformed). */
 .spinner-btn {
   position: relative;
   width: 100%;
@@ -151,14 +190,98 @@ button {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  animation: pulse 1.8s ease-in-out infinite;
+  overflow: hidden;
+  isolation: isolate;
+  will-change: transform;
+  animation:
+    shakeCta 2.8s cubic-bezier(0.36, 0.07, 0.19, 0.97) infinite,
+    neonGlow 2.8s ease-in-out infinite;
+}
+/* Glossy shimmer band (reuses the same pseudo-element idea as the claim CTA). */
+.spinner-btn::before {
+  content: "";
+  position: absolute;
+  top: -60%;
+  bottom: -60%;
+  left: 0;
+  width: 45%;
+  background: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.45) 45%,
+    rgba(255, 255, 255, 0.85) 50%,
+    rgba(255, 255, 255, 0.45) 55%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: translateX(-160%) skewX(-18deg);
+  pointer-events: none;
+  z-index: 1;
+  animation: shakeShimmer 2.8s ease-in-out infinite;
 }
 .spinner-btn .icon {
+  position: relative;
+  z-index: 2;
   font-size: 22px;
+  animation: shakerRattle 2.8s ease-in-out infinite;
+  transform-origin: 50% 60%;
 }
-@keyframes pulse {
-  0%, 100% { transform: scale(1); box-shadow: 0 10px 24px rgba(233,69,96,0.4); }
-  50% { transform: scale(1.03); box-shadow: 0 12px 34px rgba(233,69,96,0.65); }
+/* Text stays above the shimmer. */
+.spinner-btn > span:not(.icon) {
+  position: relative;
+  z-index: 2;
+}
+/* ---- Shake: quiet for most of the cycle, a short rattle at the start ---- */
+@keyframes shakeCta {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  2%   { transform: rotate(-3deg) scale(1.04) translateY(-1px); }
+  5%   { transform: rotate(3deg) scale(1.04) translateY(-2px); }
+  8%   { transform: rotate(-2deg) scale(1.03) translateY(-1px); }
+  11%  { transform: rotate(2deg) scale(1.02); }
+  14%  { transform: rotate(-1deg) scale(1.01); }
+  17%, 100% { transform: rotate(0deg) scale(1); }
+}
+/* ---- Shimmer: light band crosses the button left -> right ---- */
+@keyframes shakeShimmer {
+  0%   { transform: translateX(-160%) skewX(-18deg); opacity: 0; }
+  3%   { opacity: 1; }
+  16%  { opacity: 1; }
+  20%  { transform: translateX(340%) skewX(-18deg); opacity: 0; }
+  100% { transform: translateX(340%) skewX(-18deg); opacity: 0; }
+}
+/* ---- Soft neon-gold glow pulsing in the lower part of the button ---- */
+@keyframes neonGlow {
+  0%, 100% {
+    box-shadow:
+      0 10px 24px var(--spin-glow-soft, rgba(233, 69, 96, 0.4)),
+      0 8px 22px -4px rgba(212, 175, 55, 0.35),
+      0 0 0 0 rgba(212, 175, 55, 0);
+  }
+  50% {
+    box-shadow:
+      0 12px 28px var(--spin-glow-soft, rgba(233, 69, 96, 0.4)),
+      0 12px 34px -4px rgba(212, 175, 55, 0.65),
+      0 0 26px 2px rgba(255, 214, 102, 0.45);
+  }
+}
+/* The shaker emoji rattles a touch faster than the button, like the drink
+   being tossed inside the shaker. */
+@keyframes shakerRattle {
+  0%, 100% { transform: rotate(0deg) translateY(0); }
+  2%   { transform: rotate(-14deg) translateY(-2px); }
+  5%   { transform: rotate(12deg) translateY(-1px); }
+  8%   { transform: rotate(-9deg) translateY(-2px); }
+  11%  { transform: rotate(5deg) translateY(0); }
+  14%  { transform: rotate(-2deg) translateY(0); }
+  17%  { transform: rotate(0deg) translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinner-btn,
+  .spinner-btn::before,
+  .spinner-btn .icon { animation: none; }
+  .spinner-btn::before { opacity: 0; }
+  .spinner-btn {
+    box-shadow: 0 10px 24px var(--spin-glow-soft, rgba(233, 69, 96, 0.4));
+  }
 }
 
 /* ============ REVEAL / PRIZE POP ============ */
@@ -334,6 +457,96 @@ button {
   box-shadow: 0 10px 28px rgba(61,154,95,0.4);
 }
 
+/* ---------- Claim button: hidden during the video, revealed after the card ----------
+   The wrapper is the only thing that fades in/out; the button inside carries the
+   pulse + shimmer. While the bartender shakes and opens the shaker the wrapper is
+   display:none (no layout, no hit area), so the CTA can never be tapped early.
+   app.js reveals it exactly 1.2 s after the prize card landed, with a gentle
+   rise: translateY(12px) + opacity 0 -> translateY(0) + opacity 1. */
+.cta-claim-wrap {
+  display: none;
+  opacity: 0;
+  transform: translateY(12px);
+  transition:
+    opacity 0.45s ease,
+    transform 0.45s cubic-bezier(0.2, 1.3, 0.4, 1);
+  will-change: opacity, transform;
+}
+.cta-claim-wrap.is-visible {
+  display: block;
+  opacity: 1;
+  transform: translateY(0);
+}
+/* Belt and braces: the button itself is inert until the wrapper is visible. */
+.cta-claim-wrap:not(.is-visible) .cta-google {
+  display: none;
+  opacity: 0;
+  pointer-events: none;
+}
+.cta-claim-wrap.is-visible .cta-google {
+  display: block;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Attractive "tap me" pulse: rhythmic scale + golden neon glow + shimmer sweep. */
+.cta-claim-wrap.is-visible .cta-google {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  animation: claimPulse 1.9s ease-in-out infinite;
+}
+/* Shimmer: a soft light band that runs across the button every cycle. */
+.cta-claim-wrap.is-visible .cta-google::after {
+  content: "";
+  position: absolute;
+  top: -60%;
+  bottom: -60%;
+  left: -60%;
+  width: 45%;
+  background: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.55) 45%,
+    rgba(255, 255, 255, 0.9) 50%,
+    rgba(255, 255, 255, 0.55) 55%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: translateX(-120%) skewX(-18deg);
+  pointer-events: none;
+  z-index: 2;
+  animation: claimShimmer 2.6s ease-in-out infinite;
+}
+.cta-claim-wrap.is-visible .cta-google > span {
+  position: relative;
+  z-index: 3;
+}
+@keyframes claimPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow:
+      0 10px 26px rgba(212, 175, 55, 0.45),
+      0 0 0 0 rgba(255, 214, 102, 0.55),
+      0 0 18px rgba(255, 214, 102, 0.35);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow:
+      0 14px 38px rgba(212, 175, 55, 0.7),
+      0 0 0 10px rgba(255, 214, 102, 0),
+      0 0 34px rgba(255, 214, 102, 0.85);
+  }
+}
+@keyframes claimShimmer {
+  0% { transform: translateX(-120%) skewX(-18deg); }
+  55% { transform: translateX(320%) skewX(-18deg); }
+  100% { transform: translateX(320%) skewX(-18deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cta-claim-wrap.is-visible .cta-google { animation: none; }
+  .cta-claim-wrap.is-visible .cta-google::after { animation: none; opacity: 0; }
+}
+
 @keyframes riseIn {
   from { transform: translateY(24px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
@@ -360,7 +573,14 @@ button {
    ADMIN PANEL (pad.html) — desktop-ish styling
    ================================================ */
 .admin-body {
-  overflow: auto;
+  /* The global `html, body { overflow: hidden }` rule above is meant for the
+     guest (full-screen video) page. The admin page must scroll, so both axes
+     are restated here with the same specificity but a later rule. */
+  height: auto;
+  min-height: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+  overscroll-behavior: auto;
   background:
     radial-gradient(circle at 20% -10%, rgba(233,69,96,0.15), transparent 40%),
     radial-gradient(circle at 90% 110%, rgba(212,175,55,0.12), transparent 40%),
@@ -404,6 +624,12 @@ button {
   justify-content: center;
   padding-top: 8vh;
 }
+/* Must beat the `.admin-auth { display:flex }` rule above: an inline
+   style.display = "none" is not enough because any rule with a display value
+   wins over the [hidden] attribute, so the login card stayed on screen after
+   a successful 200 OK and the panel looked locked. */
+.admin-auth[hidden],
+#admin-auth[hidden] { display: none !important; }
 .admin-auth .glass-card {
   display: flex;
   flex-direction: column;
@@ -427,12 +653,12 @@ button {
   margin-bottom: 14px;
 }
 .admin-panel {
-  background: var(--glass);
+  /* No `backdrop-filter` here: it would create a stacking context (and a
+     containing block for the popover) around the color palettes. */
+  background: rgba(255, 255, 255, 0.06);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius);
   padding: 16px;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   margin-bottom: 14px;
 }
 .admin-panel h2 { font-size: 17px; margin-bottom: 12px; }
@@ -555,6 +781,20 @@ button {
   border: 1px solid var(--gold);
   z-index: 200;
 }
+/* `.admin-toast` sets its own position/z-index, so respect the hidden state
+   explicitly — otherwise the "nothing happened" toast would look like a bug. */
+.admin-toast[hidden] {
+  display: none !important;
+}
+.admin-toast.error {
+  border-color: #e94560;
+  color: #ffb3bf;
+}
+/* Invalid field flash (e.g. a malformed Google Reviews URL). */
+.field-invalid {
+  border-color: #e94560 !important;
+  box-shadow: 0 0 0 2px rgba(233, 69, 96, 0.35);
+}
 
 /* ---------- Prize photo (admin) ---------- */
 .prize-media {
@@ -616,6 +856,232 @@ button {
   accent-color: var(--gold);
 }
 
+/* ---------- Compact color picker (swatch + popup palette) ---------- */
+.color-picker-wrap {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+.color-swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+/* Hover feedback without `transform`: a scaled swatch would become a stacking
+   context of its own and could paint over the popover it opens. */
+.color-swatch:hover {
+  border-color: var(--gold);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.4),
+    0 0 0 3px rgba(212, 175, 55, 0.35),
+    0 2px 10px rgba(0, 0, 0, 0.5);
+}
+.color-picker-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  /* Anchor to the RIGHT edge by default: every swatch in the admin sits at the
+     end of its row, so growing leftwards is what keeps the palette on screen.
+     `admin.js` adds `.is-left` when the left edge would still overflow. */
+  left: auto;
+  right: 0;
+  z-index: 9999;
+  min-width: 180px;
+  width: max-content;
+  max-width: min(220px, calc(100vw - 24px));
+  background: #1a1a2b;
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.7);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+/* Smart flip: grow to the right when the swatch is near the left screen edge. */
+.color-picker-pop.is-left {
+  left: 0;
+  right: auto;
+}
+.color-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+}
+.color-preset {
+  width: 24px;
+  height: 24px;
+}
+.color-picker-custom {
+  width: 100%;
+  height: 30px;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  margin: 0;
+}
+.color-picker-wrap .color-picker-custom {
+  padding: 0;
+  margin: 0;
+}
+/* Older right-anchored overrides are no longer needed: `.color-picker-pop`
+   already grows leftwards from the swatch (right: 0). Kept as a comment so the
+   intent of the `left: auto / right: 0` default above stays documented. */
+
+/* ---------- Admin: prize label (badge text) settings row ---------- */
+.cfg-prize-label-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+.cfg-prize-label-title {
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.prize-label-name-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+}
+
+/* Prize-row color swatch column. */
+.prize-color-wrap {
+  align-self: center;
+}
+
+/* ---------- Admin: overlays never get clipped ----------
+   Every admin container is forced to `overflow: visible`, because a hidden /
+   clip / auto value (or an inherited one) is an *overflow clipping* container
+   that cuts the color-picker popover on narrow rows. The glass blur
+   (`backdrop-filter`) is intentionally NOT used on the admin cards: besides
+   being expensive it creates a stacking context that traps absolutely
+   positioned popovers inside the card. A solid translucent color reads the
+   same over the flat admin background. */
+.admin-shell,
+.admin-header,
+#admin-app,
+#admin-form,
+.admin-cols,
+.admin-panel,
+.admin-details,
+.admin-details-body,
+.prizes-list,
+.prize-row,
+.prize-labels,
+.start-row,
+.start-row-fields,
+.cfg-prize-label-row,
+.prize-label-name-fields,
+.stats-grid,
+.stat,
+.stat-by-prize,
+.prize-media,
+.name-fields,
+.prize-color-wrap,
+.color-picker-wrap {
+  overflow: visible;
+}
+
+/* The row / card that currently contains an open palette is lifted above its
+   siblings, so a popover that overlaps the next card is still painted on top. */
+.has-open-popover {
+  position: relative;
+  z-index: 1000;
+}
+/* Popover must also beat the lifted row it lives in. */
+.color-picker-wrap {
+  z-index: 1000;
+}
+.color-picker-pop {
+  z-index: 9999;
+}
+
+/* ---------- Admin: collapsible "start screen" card (texts + colors) ---------- */
+.admin-details {
+  /* Solid translucent fill instead of `backdrop-filter: blur()` — the blur
+     creates a stacking context that keeps the palette popovers inside the
+     <details> card, hidden behind the next section. */
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  padding: 0 16px;
+  margin-bottom: 14px;
+}
+.admin-details > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  user-select: none;
+}
+.admin-details > summary::-webkit-details-marker { display: none; }
+.admin-details > summary::after {
+  content: "▾";
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--muted);
+  transition: transform 0.2s ease;
+}
+.admin-details[open] > summary::after { transform: rotate(180deg); }
+.admin-details[open] > summary { border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+.admin-details-body { padding: 12px 0 4px; }
+
+/* One compact row per start-screen element: title + RO/RU/EN + color swatch. */
+.start-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) 2.4fr auto;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.start-row-title {
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  line-height: 1.25;
+}
+.start-row-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+  min-width: 0;
+}
+.start-row-fields input {
+  min-width: 0;
+  padding: 7px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--glass-border);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--text);
+  font-size: 13px;
+}
+.start-row-fields input:focus { outline: 2px solid var(--gold); }
+.start-row-hint {
+  grid-column: 1 / -1;
+  font-size: 11px;
+  color: var(--muted);
+  opacity: 0.8;
+  align-self: center;
+}
+.start-row .color-picker-wrap { align-self: center; }
+
+
 /* ---------- Guest: prize/coupon photo ---------- */
 .prize-img {
   display: inline-block;
@@ -648,4 +1114,10 @@ button {
   .prize-row .name-fields { grid-column: 1 / -1; }
   .prize-labels { display: none; }
   .prize-media { grid-column: 1 / -1; }
+  /* Start-screen rows: title on its own line, then RO/RU/EN + swatch. */
+  .start-row {
+    grid-template-columns: 1fr auto;
+    row-gap: 6px;
+  }
+  .start-row-title { grid-column: 1 / -1; }
 }

@@ -4,8 +4,36 @@ const DEFAULT_CONFIG = {
   googleReviewsUrl: "https://www.google.com/search?q=Voice+Club",
   couponLifetimeMinutes: 15,
   prizeRevealSeconds: 4.1,
+  // Idle "shaking" loop of the closed shaker: the guest video ping-pongs
+  // between these two seconds until the guest presses the spin button.
+  idleLoopStart: 0.2,
+  idleLoopEnd: 2.4,
   dailySpinLimitPerUser: 0,
   enforceUserLimit: true,
+  prizeLabel: { ro: "Premiu", ru: "ПРИЗ", en: "PRIZE" },
+  prizeLabelColor: "#d4af37",
+  // Start screen (index.html): heading, subtitle and spin button texts per
+  // language + their colors. The button background is an accent color from
+  // which the client builds the gradient and the glow.
+  startTitle: {
+    ro: "Compliment de la barmanul Voice Club",
+    ru: "Комплимент от бармена Voice Club",
+    en: "Compliment from the Voice Club bartender"
+  },
+  startTitleColor: "#ffffff",
+  startSubtitle: {
+    ro: "Scutură shaker-ul și află cadoul tău pentru un review în Google",
+    ru: "Встряхни шейкер и узнай свой подарок за отзыв в Google",
+    en: "Shake the shaker and find out your gift for a Google review"
+  },
+  startSubtitleColor: "#cbd5e1",
+  startButtonText: {
+    ro: "Scutură shaker-ul",
+    ru: "Встряхнуть шейкер",
+    en: "Shake the shaker"
+  },
+  startButtonTextColor: "#ffffff",
+  startButtonBgColor: "#e94560",
   prizes: [
     {
       id: "shot-mojito",
@@ -14,6 +42,7 @@ const DEFAULT_CONFIG = {
       image: "",
       weight: 40,
       dailyLimit: 20,
+      color: "#ffffff",
       name: { ro: "Shot de Mojito", ru: "Шот Мохито", en: "Mojito Shot" }
     },
     {
@@ -23,6 +52,7 @@ const DEFAULT_CONFIG = {
       image: "",
       weight: 25,
       dailyLimit: 12,
+      color: "#ffffff",
       name: { ro: "Cocktail din stage", ru: "Коктейль со сцены", en: "Stage Cocktail" }
     },
     {
@@ -32,6 +62,7 @@ const DEFAULT_CONFIG = {
       image: "",
       weight: 15,
       dailyLimit: 10,
+      color: "#ffffff",
       name: { ro: "Lecție de dans", ru: "Урок танцев", en: "Dance Lesson" }
     },
     {
@@ -41,6 +72,7 @@ const DEFAULT_CONFIG = {
       image: "",
       weight: 12,
       dailyLimit: 5,
+      color: "#ffffff",
       name: { ro: "Ridicare la VIP", ru: "Подъём в VIP", en: "VIP Upgrade" }
     },
     {
@@ -50,6 +82,7 @@ const DEFAULT_CONFIG = {
       image: "",
       weight: 8,
       dailyLimit: 3,
+      color: "#ffffff",
       name: { ro: "Bartender personal", ru: "Личный бармен", en: "Private Bartender" }
     }
   ]
@@ -60,14 +93,24 @@ export const onRequest = async (context) => {
   // stored config can never turn a guest request into a 500.
   // Helpers are attached to context.data so they propagate through the
   // middleware chain to the downstream handler (Cloudflare Pages shares the
-  // context.data object across functions). Direct context props are lost.
+  // context.data object across functions). Direct props are lost.
   context.data.configDefaults = DEFAULT_CONFIG;
   context.data.getConfig = async () => {
-    const raw = await safeKVGet(context.env.OFFER_CONFIG, "config", "json");
+    // A KV binding (or a local dev shim) may hand back a JSON *string* even when
+    // `type = "json"` is requested. Accept both shapes so the saved values are
+    // always read back instead of silently falling through to the defaults.
+    let raw = await safeKVGet(context.env.OFFER_CONFIG, "config", "json");
+    if (typeof raw === "string") {
+      try { raw = JSON.parse(raw); } catch (e) { raw = null; }
+    }
     if (raw && typeof raw === "object") {
       return normalizeConfig(raw);
     }
-    // KV missing/empty/unavailable -> fall back to bundled defaults.
+    // KV missing/empty/unavailable -> fall back to bundled defaults AND make
+    // sure those defaults exist in KV. Without the write, a fresh local dev
+    // binding had nothing persisted, so a PUT plus reload always came back to
+    // the in-code defaults (the saved file was never read, never re-written).
+    await safeKVPut(context.env.OFFER_CONFIG, "config", JSON.stringify(DEFAULT_CONFIG));
     return normalizeConfig(DEFAULT_CONFIG);
   };
 
@@ -112,6 +155,14 @@ function normalizeConfig(raw) {
         : base.couponLifetimeMinutes,
     prizeRevealSeconds:
       typeof raw.prizeRevealSeconds === "number" ? raw.prizeRevealSeconds : base.prizeRevealSeconds,
+    idleLoopStart:
+      typeof raw.idleLoopStart === "number"
+        ? normalizeLoopTime(raw.idleLoopStart, base.idleLoopStart)
+        : base.idleLoopStart,
+    idleLoopEnd:
+      typeof raw.idleLoopEnd === "number"
+        ? normalizeLoopTime(raw.idleLoopEnd, base.idleLoopEnd)
+        : base.idleLoopEnd,
     dailySpinLimitPerUser:
       typeof raw.dailySpinLimitPerUser === "number"
         ? raw.dailySpinLimitPerUser
@@ -120,6 +171,20 @@ function normalizeConfig(raw) {
       typeof raw.enforceUserLimit === "boolean"
         ? raw.enforceUserLimit
         : base.enforceUserLimit,
+    prizeLabel:
+      raw.prizeLabel && typeof raw.prizeLabel === "object"
+        ? normalizeName(raw.prizeLabel)
+        : base.prizeLabel,
+    prizeLabelColor: normalizeColor(raw.prizeLabelColor, base.prizeLabelColor),
+    // Start screen texts + colors. A missing/blank language falls back to the
+    // bundled default so the guest page never renders an empty heading.
+    startTitle: normalizeText(raw.startTitle, base.startTitle),
+    startTitleColor: normalizeColor(raw.startTitleColor, base.startTitleColor),
+    startSubtitle: normalizeText(raw.startSubtitle, base.startSubtitle),
+    startSubtitleColor: normalizeColor(raw.startSubtitleColor, base.startSubtitleColor),
+    startButtonText: normalizeText(raw.startButtonText, base.startButtonText),
+    startButtonTextColor: normalizeColor(raw.startButtonTextColor, base.startButtonTextColor),
+    startButtonBgColor: normalizeColor(raw.startButtonBgColor, base.startButtonBgColor),
     prizes: Array.isArray(raw.prizes) ? normalizePrizes(raw.prizes) : base.prizes
   };
   return out;
@@ -137,8 +202,25 @@ export function normalizePrizes(prizes) {
       image: String(p.image != null ? p.image : ""),
       weight: Math.max(0, Number(p.weight) || 0),
       dailyLimit: Math.max(0, Math.floor(Number(p.dailyLimit) || 0)),
+      color: normalizeColor(p.color, "#ffffff"),
       name: normalizeName(p.name || p.names)
     }));
+}
+
+// Idle loop bounds are video timestamps in seconds: never negative, rounded to
+// milliseconds (same precision as the admin fields, step 0.1 s).
+function normalizeLoopTime(value, fallback) {
+  const n = Number(value);
+  if (!isFinite(n) || n < 0) return fallback;
+  return Math.round(n * 1000) / 1000;
+}
+
+function normalizeColor(value, fallback) {
+  if (typeof value !== "string") return fallback;
+  const v = value.trim();
+  // Accept hex/there is a small set of simple forms we can trust without a DOM.
+  if (/^#[0-9a-fA-F]{6}$/.test(v) || /^#[0-9a-fA-F]{3}$/.test(v)) return v;
+  return fallback;
 }
 
 function normalizeName(name) {
@@ -149,6 +231,19 @@ function normalizeName(name) {
     ru: String(name.ru || name.Ru || ""),
     en: String(name.en || name.En || "")
   };
+}
+
+// Localized free text (start screen headings etc.): every language falls back
+// to the bundled default when the stored value is missing or blank, so the
+// guest page can never show an empty title/subtitle/button.
+function normalizeText(value, fallback) {
+  const fb = fallback && typeof fallback === "object" ? fallback : { ro: "", ru: "", en: "" };
+  const src = value && typeof value === "object" ? value : {};
+  const pick = (l) => {
+    const v = typeof src[l] === "string" ? src[l].trim() : "";
+    return v || fb[l] || "";
+  };
+  return { ro: pick("ro"), ru: pick("ru"), en: pick("en") };
 }
 
 // Stats live under a single normalised shape that both current and older saved
@@ -207,11 +302,20 @@ export function randomUUID() {
   });
 }
 
+// Local-dev fallback: without .dev.vars / dashboard secrets ADMIN_USER and
+// ADMIN_PASS are undefined, so btoa would compare against "undefined:undefined"
+// and every login (including admin/1234) failed with 401. Production must set
+// real values via `wrangler pages secret put`; locally admin/1234 always works.
+const DEFAULT_ADMIN_USER = "admin";
+const DEFAULT_ADMIN_PASS = "1234";
+
 // Shared authentication guard for admin-only routes.
 export async function requireAdmin(context) {
-  const { ADMIN_USER, ADMIN_PASS } = context.env;
+  const env = context.env || {};
+  const adminUser = env.ADMIN_USER || DEFAULT_ADMIN_USER;
+  const adminPass = env.ADMIN_PASS || DEFAULT_ADMIN_PASS;
   const auth = context.request.headers.get("Authorization") || "";
-  const expected = "Basic " + btoa(`${ADMIN_USER}:${ADMIN_PASS}`);
+  const expected = "Basic " + btoa(`${adminUser}:${adminPass}`);
 
   if (auth !== expected) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -225,10 +329,10 @@ export async function requireAdmin(context) {
   return null;
 }
 
-function json(data, status = 200) {
+function json(data, status = 200, extraHeaders) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "Content-Type": "application/json; charset=utf-8" }
+    headers: Object.assign({ "Content-Type": "application/json; charset=utf-8" }, extraHeaders || {})
   });
 }
 

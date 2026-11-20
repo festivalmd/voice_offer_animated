@@ -92,6 +92,7 @@ async function issueWinner(context, config, winner) {
       icon: winner.icon || "🎁",
       image: winner.image || "",
       name: winner.name || {},
+      color: winner.color || "#ffffff",
       couponId,
       revealSeconds: config.prizeRevealSeconds ?? 4.1,
       couponLifetimeMinutes: config.couponLifetimeMinutes ?? 15

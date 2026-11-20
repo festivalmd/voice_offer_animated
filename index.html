@@ -8,10 +8,15 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Voice Club — Complements</title>
-  <link rel="stylesheet" href="assets/css/styles.css" />
+  <link rel="stylesheet" href="assets/css/styles.css?v=6" />
 </head>
 <body>
-  <video id="bartender-video" src="assets/media/bartender.mp4" poster="assets/media/bartender-poster.png" playsinline muted preload="auto"></video>
+  <!-- Two identical players: they crossfade into each other while the guest
+       is on the start screen, so the idle loop is seamless (forward only). -->
+  <div id="bartender-video-stage">
+    <video id="bartender-video-a" class="bartender-video" src="assets/media/bartender.mp4" poster="assets/media/bartender-poster.png" muted playsinline preload="auto"></video>
+    <video id="bartender-video-b" class="bartender-video" src="assets/media/bartender.mp4" poster="assets/media/bartender-poster.png" muted playsinline preload="auto"></video>
+  </div>
 
   <!-- Language switcher -->
   <div id="lang-switcher">
@@ -63,9 +68,14 @@
     </div>
 
     <div class="action-bar" id="action-bar">
-      <button id="btn-google" class="cta-google">
-        <span data-i18n="claim">Забрать подарок (Оставить отзыв в Google)</span>
-      </button>
+      <!-- The claim button lives in its own wrapper: the wrapper is what fades
+           in (opacity/transform) once the prize card has landed, while the
+           button itself carries the pulsing glow + shimmer. -->
+      <div class="cta-claim-wrap" id="claim-wrap">
+        <button id="btn-google" class="cta-google">
+          <span data-i18n="claim">Забрать подарок (Оставить отзыв в Google)</span>
+        </button>
+      </div>
       <button id="btn-redeem" class="cta-redeem" hidden>
         <span data-i18n="redeem">Погасить у бармена</span>
       </button>
@@ -78,6 +88,6 @@
     // Prevent the video from auto-requiring play on iOS; we control play start.
     window.__APP_CONFIG__ = {};
   </script>
-  <script src="assets/js/app.js"></script>
+  <script src="assets/js/app.js?v=6"></script>
 </body>
 </html>
